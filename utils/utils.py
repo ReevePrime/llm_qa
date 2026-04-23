@@ -4,6 +4,7 @@ from pypdf import PdfReader
 import openai
 import magic
 import os
+import io
 import fnmatch
 from fastapi import HTTPException
 
@@ -37,7 +38,7 @@ async def extract_and_store(files):
         if not validate_upload(contents, allowed_mime_types=["text/*", "application/pdf"]):
             raise HTTPException(status_code=415, detail=f"{file.filename} has an unsupported file type")
         if file.filename.endswith(".pdf"):
-            reader = PdfReader(file)
+            reader = PdfReader(io.BytesIO(contents))
             pages = [page.extract_text() for page in reader.pages]
         else:
             pages = [contents.decode("utf-8")]
