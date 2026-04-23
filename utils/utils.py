@@ -49,7 +49,7 @@ async def extract_and_store(files):
             logger.warning("File size limit exceeded", extra={
                 "endpoint": "/api/upload",
                 "latency": time.time() - start_time,
-                "name": file.filename,
+                "file_name": file.filename,
                 "size": len(contents),
                 "document_id": None,
                 "status_code": 413,
@@ -60,7 +60,7 @@ async def extract_and_store(files):
             logger.warning("Unsupported file type", extra={
                 "endpoint": "/api/upload",
                 "latency": time.time() - start_time,
-                "name": file.filename,
+                "file_name": file.filename,
                 "document_id": None,
                 "status_code": 415,
                 "error": f"File '{file.filename}' has an unsupported file type",
@@ -88,14 +88,14 @@ async def extract_and_store(files):
             logger.info("File ingested successfully", extra={
                 "endpoint": "/api/upload",
                 "latency": time.time() - start_time,
-                "name": file.filename,
+                "file_name": file.filename,
                 "status_code": 200,
             })
         except Exception:
             logger.error("Failed to process file", exc_info=True, extra={
                 "endpoint": "/api/upload",
                 "latency": time.time() - start_time,
-                "name": file.filename,
+                "file_name": file.filename,
                 "document_id": None,
                 "status_code": 500,
                 "error": f"Failed to process file '{file.filename}'",
