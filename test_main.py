@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from main import app, verify_api_key
-from utils.utils import validate_upload
+from utils.utils import validate_upload, initialize
 import io
 
 # Override the API key dependency - app.dependency_overrides lets you swap any dependency for a different implementation during testing. 
@@ -15,7 +15,8 @@ def test_validate_upload_accepts_pdf():
         assert validate_upload(f.read(), ["application/pdf"]) is True
 
 def test_validate_upload_rejects_exe():
-    fake_exe = b"MZ\x90\x00"  # PE header magic bytes
+    # PNG signature — unambiguously detected as image/png by libmagic
+    fake_exe = b"\x89PNG\r\n\x1a\n" + b"\x00" * 8
     assert validate_upload(fake_exe, ["text/*", "application/pdf"]) is False
 
 
@@ -28,3 +29,20 @@ def test_ingest_endpoint():
     fake_file = io.BytesIO(b"hello world")
     resp = client.post("/ingest", files={"files": ("test.txt", fake_file, "text/plain")})
     assert resp.status_code == 200
+
+
+# --- Unit test: text splitter chunking ---
+def test_chunking_count_and_overlap():
+    # chunk_size=512, chunk_overlap=64
+    # A 1100-char string produces 3 chunks: [0:512], [448:960], [896:1100]
+    text = "A" * 1100
+    text_splitter, _ = initialize()
+    chunks = text_splitter.create_documents([text])
+
+    assert len(chunks) == 3
+
+    # The tail of each chunk must appear at the head of the next
+    for i in range(len(chunks) - 1):
+        tail = chunks[i].page_content[-64:]
+        head = chunks[i + 1].page_content[:64]
+        assert tail == head, f"Overlap missing between chunk {i} and chunk {i + 1}"
