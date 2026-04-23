@@ -25,9 +25,12 @@ def extract_and_store(files):
 
     text_splitter, collection = initialize()
     for file in files:
-        reader = PdfReader(file)
-        for page_num, page in enumerate(reader.pages):
-            page_content = page.extract_text()
+        if file.name.endswith(".pdf"):
+            reader = PdfReader(file)
+            pages = [page.extract_text() for page in reader.pages]
+        else:
+            pages = [file.read().decode("utf-8")]
+        for page_num, page_content in enumerate(pages):
             chunks = text_splitter.create_documents([page_content])
             chunks_to_strings = [chunk.page_content for chunk in chunks]
             response = openai.embeddings.create(
