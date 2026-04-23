@@ -4,6 +4,10 @@ from pypdf import PdfReader
 import openai
 import magic
 import os
+import fnmatch
+from fastapi import HTTPException
+
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 CHROMA_PATH = "./chroma_data"
 COLLECTION_NAME = "openai_embeddings"
@@ -28,8 +32,10 @@ async def extract_and_store(files):
     text_splitter, collection = initialize()
     for file in files:
         contents = await file.read()
-        validate_upload(contents, allowed_mime_types=["text/*", "application/pdf"])
-        size_bytes = len(contents)
+        if len(contents) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail=f"{file.filename} exceeds the 10MB size limit")
+        if not validate_upload(contents, allowed_mime_types=["text/*", "application/pdf"]):
+            raise HTTPException(status_code=415, detail=f"{file.filename} has an unsupported file type")
         if file.filename.endswith(".pdf"):
             reader = PdfReader(file)
             pages = [page.extract_text() for page in reader.pages]
@@ -79,7 +85,8 @@ def query_llm(query: str) -> str:
 
 def validate_upload(file_bytes: bytes, allowed_mime_types: list[str]) -> bool:
     detected = magic.from_buffer(file_bytes, mime=True)
-    return detected in allowed_mime_types
+    # Run wildcard pattern matching against the detected MIME type to allow for patterns like "text/*"
+    return any(fnmatch.fnmatch(detected, pattern) for pattern in allowed_mime_types)
 
 
 
