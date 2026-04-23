@@ -1,20 +1,28 @@
 from argparse import ArgumentParser, FileType
 from dotenv import load_dotenv
-from utils import initialize, extract_and_store
+from utils import extract_and_store, query_llm
 
 load_dotenv()
 
-# Argumentparser to get PDF files from command line -> python main.py --files file1.pdf file2.pdf ...
+
 def parse_args():
-    parser = ArgumentParser(prog="Extract content of a PDF file", description=__doc__)
-    parser.add_argument("--files", nargs="+", type=FileType("rb"), required=True,
-                        help="PDF files to extract content from")
-    return parser.parse_args()
+    parser = ArgumentParser(prog="LLM QA", description="Ingest PDFs or query the knowledge base")
+    parser.add_argument("--files", nargs="+", type=FileType("rb"),
+                        help="PDF files to ingest into the database")
+    parser.add_argument("--query", nargs="+", type=str,
+                        help="Question to ask against the database")
+    args = parser.parse_args()
+    if not args.files and not args.query:
+        parser.error("Provide --files to ingest PDFs or --query to ask a question")
+    return args
 
 
 def main():
     args = parse_args()
-    extract_and_store(args)
+    if args.files:
+        extract_and_store(args.files)
+    elif args.query:
+        print(query_llm(" ".join(args.query)))
 
 
 if __name__ == "__main__":

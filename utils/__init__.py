@@ -1,1 +1,1 @@
-from utils.utils import initialize, extract_and_store
+from utils.utils import extract_and_store, query_llm
