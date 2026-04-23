@@ -8,8 +8,16 @@ import io
 import fnmatch
 import logging
 from fastapi import HTTPException
+from pythonjsonlogger.json import JsonFormatter
+import time
 
 logger = logging.getLogger(__name__)
+handler = logging.FileHandler("logs.json")                # Handlers control where the logs are written.
+handler.setFormatter(JsonFormatter(                       # setFormatter controls the way log entries look.
+    fmt="%(asctime)s %(levelname)s %(message)s"
+))
+logger.addHandler(handler)                                # Links the handler to the logger. (Handlers can have multiple loggers)
+logger.setLevel(logging.DEBUG)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
@@ -35,12 +43,28 @@ async def extract_and_store(files):
 
     text_splitter, collection = initialize()
     for file in files:
+        start_time = time.time()
         contents = await file.read()
         if len(contents) > MAX_FILE_SIZE:
-            logger.warning("File '%s' rejected: size %d bytes exceeds 10MB limit", file.filename, len(contents))
+            logger.warning("File size limit exceeded", extra={
+                "endpoint": "/api/upload",
+                "latency": time.time() - start_time,
+                "name": file.filename,
+                "size": len(contents),
+                "document_id": None,
+                "status_code": 413,
+                "error": "File size exceeds 10MB limit",
+            })
             raise HTTPException(status_code=413, detail=f"{file.filename} exceeds the 10MB size limit")
         if not validate_upload(contents, allowed_mime_types=["text/*", "application/pdf"]):
-            logger.warning("File '%s' rejected: unsupported MIME type", file.filename)
+            logger.warning("Unsupported file type", extra={
+                "endpoint": "/api/upload",
+                "latency": time.time() - start_time,
+                "name": file.filename,
+                "document_id": None,
+                "status_code": 415,
+                "error": f"File '{file.filename}' has an unsupported file type",
+            })
             raise HTTPException(status_code=415, detail=f"{file.filename} has an unsupported file type")
         try:
             if file.filename.endswith(".pdf"):
@@ -61,15 +85,27 @@ async def extract_and_store(files):
                     documents=chunks_to_strings,
                     ids=[f"{file.filename}_{page_num}_{i}" for i, _ in enumerate(chunks_to_strings)]
                 )
-        except HTTPException:
-            raise
+            logger.info("File ingested successfully", extra={
+                "endpoint": "/api/upload",
+                "latency": time.time() - start_time,
+                "name": file.filename,
+                "status_code": 200,
+            })
         except Exception:
-            logger.error("Failed to process file '%s'", file.filename, exc_info=True)
+            logger.error("Failed to process file", exc_info=True, extra={
+                "endpoint": "/api/upload",
+                "latency": time.time() - start_time,
+                "name": file.filename,
+                "document_id": None,
+                "status_code": 500,
+                "error": f"Failed to process file '{file.filename}'",
+            })
             raise HTTPException(status_code=500, detail=f"Failed to process {file.filename}")
 
 
 def query_llm(query: str) -> str:
     """Query the LLM with a question, retrieve relevant context from ChromaDB, and return the answer."""
+    start_time = time.time()
     try:
         query_embedding = openai.embeddings.create(
             input=query,
@@ -94,9 +130,21 @@ def query_llm(query: str) -> str:
             ]
         )
 
+        logger.info("Query completed successfully", extra={
+            "endpoint": "/api/query",
+            "latency": time.time() - start_time,
+            "query": query,
+            "status_code": 200,
+        })
         return response.choices[0].message.content
     except Exception:
-        logger.error("query_llm failed for query: %r", query, exc_info=True)
+        logger.error("Failed to process query", exc_info=True, extra={
+            "endpoint": "/api/query",
+            "latency": time.time() - start_time,
+            "query": query,
+            "status_code": 500,
+            "error": f"Failed to process query '{query}'",
+        })
         raise
 
 def validate_upload(file_bytes: bytes, allowed_mime_types: list[str]) -> bool:
