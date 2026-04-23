@@ -4,6 +4,7 @@ from fastapi import FastAPI, UploadFile, File, Header, HTTPException, Depends
 from pydantic import BaseModel
 import os
 
+
 load_dotenv()
 
 app = FastAPI()
@@ -22,7 +23,7 @@ async def verify_api_key(x_api_key: str = Header(...)):
 
 @app.post("/ingest")
 async def ingest(files: list[UploadFile] = File(...), _=Depends(verify_api_key)):
-    extract_and_store(files)
+    await extract_and_store(files)
     return {"message": f"Ingested {len(files)} file(s)"}
 
 class QueryRequest(BaseModel):
@@ -32,5 +33,3 @@ class QueryRequest(BaseModel):
 async def query(request: QueryRequest, _=Depends(verify_api_key)):
     answer = query_llm(request.query)
     return {"answer": answer}
-
-

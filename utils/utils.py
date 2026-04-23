@@ -2,6 +2,8 @@ import chromadb
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
 import openai
+import magic
+import os
 
 CHROMA_PATH = "./chroma_data"
 COLLECTION_NAME = "openai_embeddings"
@@ -20,16 +22,19 @@ def initialize():
     return text_splitter, collection
 
 
-def extract_and_store(files):
+async def extract_and_store(files):
     """Extract text from PDF files, create embeddings, and store them in ChromaDB."""
 
     text_splitter, collection = initialize()
     for file in files:
-        if file.name.endswith(".pdf"):
+        contents = await file.read()
+        validate_upload(contents, allowed_mime_types=["text/*", "application/pdf"])
+        size_bytes = len(contents)
+        if file.filename.endswith(".pdf"):
             reader = PdfReader(file)
             pages = [page.extract_text() for page in reader.pages]
         else:
-            pages = [file.read().decode("utf-8")]
+            pages = [contents.decode("utf-8")]
         for page_num, page_content in enumerate(pages):
             chunks = text_splitter.create_documents([page_content])
             chunks_to_strings = [chunk.page_content for chunk in chunks]
@@ -41,7 +46,7 @@ def extract_and_store(files):
             collection.add(
                 embeddings=embeddings,
                 documents=chunks_to_strings,
-                ids=[f"{file.name}_{page_num}_{i}" for i, _ in enumerate(chunks_to_strings)]
+                ids=[f"{file.filename}_{page_num}_{i}" for i, _ in enumerate(chunks_to_strings)]
             )
 
 
@@ -71,3 +76,10 @@ def query_llm(query: str) -> str:
     )
 
     return response.choices[0].message.content
+
+def validate_upload(file_bytes: bytes, allowed_mime_types: list[str]) -> bool:
+    detected = magic.from_buffer(file_bytes, mime=True)
+    return detected in allowed_mime_types
+
+
+
