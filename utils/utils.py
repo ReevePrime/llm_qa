@@ -2,6 +2,13 @@ import chromadb
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pypdf import PdfReader
 import openai
+import magic
+import os
+import io
+import fnmatch
+from fastapi import HTTPException
+
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 CHROMA_PATH = "./chroma_data"
 COLLECTION_NAME = "openai_embeddings"
@@ -20,16 +27,21 @@ def initialize():
     return text_splitter, collection
 
 
-def extract_and_store(files):
+async def extract_and_store(files):
     """Extract text from PDF files, create embeddings, and store them in ChromaDB."""
 
     text_splitter, collection = initialize()
     for file in files:
-        if file.name.endswith(".pdf"):
-            reader = PdfReader(file)
+        contents = await file.read()
+        if len(contents) > MAX_FILE_SIZE:
+            raise HTTPException(status_code=413, detail=f"{file.filename} exceeds the 10MB size limit")
+        if not validate_upload(contents, allowed_mime_types=["text/*", "application/pdf"]):
+            raise HTTPException(status_code=415, detail=f"{file.filename} has an unsupported file type")
+        if file.filename.endswith(".pdf"):
+            reader = PdfReader(io.BytesIO(contents))
             pages = [page.extract_text() for page in reader.pages]
         else:
-            pages = [file.read().decode("utf-8")]
+            pages = [contents.decode("utf-8")]
         for page_num, page_content in enumerate(pages):
             chunks = text_splitter.create_documents([page_content])
             chunks_to_strings = [chunk.page_content for chunk in chunks]
@@ -41,7 +53,7 @@ def extract_and_store(files):
             collection.add(
                 embeddings=embeddings,
                 documents=chunks_to_strings,
-                ids=[f"{file.name}_{page_num}_{i}" for i, _ in enumerate(chunks_to_strings)]
+                ids=[f"{file.filename}_{page_num}_{i}" for i, _ in enumerate(chunks_to_strings)]
             )
 
 
@@ -71,3 +83,11 @@ def query_llm(query: str) -> str:
     )
 
     return response.choices[0].message.content
+
+def validate_upload(file_bytes: bytes, allowed_mime_types: list[str]) -> bool:
+    detected = magic.from_buffer(file_bytes, mime=True)
+    # Run wildcard pattern matching against the detected MIME type to allow for patterns like "text/*"
+    return any(fnmatch.fnmatch(detected, pattern) for pattern in allowed_mime_types)
+
+
+

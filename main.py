@@ -1,29 +1,35 @@
-from argparse import ArgumentParser, FileType
 from dotenv import load_dotenv
 from utils import extract_and_store, query_llm
+from fastapi import FastAPI, UploadFile, File, Header, HTTPException, Depends
+from pydantic import BaseModel
+import os
+
 
 load_dotenv()
 
+app = FastAPI()
 
-def parse_args():
-    parser = ArgumentParser(prog="LLM QA", description="Ingest PDFs or query the knowledge base")
-    parser.add_argument("--files", nargs="+", type=FileType("rb"),
-                        help="PDF files to ingest into the database")
-    parser.add_argument("--query", nargs="+", type=str,
-                        help="Question to ask against the database")
-    args = parser.parse_args()
-    if not args.files and not args.query:
-        parser.error("Provide --files to ingest PDFs or --query to ask a question")
-    return args
+# Health check endpoint
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
+# API key verification dependency
+async def verify_api_key(x_api_key: str = Header(...)):
+      expected = os.getenv("API_KEY")
+      if x_api_key != expected:                                                                                                                                                                                
+          raise HTTPException(status_code=403, detail="Invalid API key")
+      return True
 
-def main():
-    args = parse_args()
-    if args.files:
-        extract_and_store(args.files)
-    elif args.query:
-        print(query_llm(" ".join(args.query)))
+@app.post("/ingest")
+async def ingest(files: list[UploadFile] = File(...), _=Depends(verify_api_key)):
+    await extract_and_store(files)
+    return {"message": f"Ingested {len(files)} file(s)"}
 
+class QueryRequest(BaseModel):
+    query: str
 
-if __name__ == "__main__":
-    main()
+@app.post("/query")
+async def query(request: QueryRequest, _=Depends(verify_api_key)):
+    answer = query_llm(request.query)
+    return {"answer": answer}
