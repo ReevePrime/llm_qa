@@ -1,8 +1,10 @@
 from fastapi.testclient import TestClient
 from main import app, verify_api_key
 from utils.utils import validate_upload, initialize
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
 import io
+import os
+import tempfile
 
 # Override the API key dependency - app.dependency_overrides lets you swap any dependency for a different implementation during testing.
 # Here we replace it with a lambda that always returns True
@@ -32,6 +34,42 @@ def test_ingest_endpoint():
     with patch("main.extract_and_store", new=AsyncMock(return_value=None)):
         resp = client.post("/ingest", files={"files": ("test.txt", fake_file, "text/plain")})
     assert resp.status_code == 200
+
+
+# --- Integration test: upload PDF and query ---
+def test_ingest_and_query_real_pdf():
+    pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "test.pdf")
+    FAKE_ANSWER = "The document is about sample PDF content."
+
+    def fake_embed(*args, **kwargs):
+        inp = kwargs.get("input", args[0] if args else [])
+        count = len(inp) if isinstance(inp, list) else 1
+        result = MagicMock()
+        result.data = [MagicMock(embedding=[0.1] * 1536) for _ in range(count)]
+        return result
+
+    def fake_chat(*args, **kwargs):
+        result = MagicMock()
+        result.choices[0].message.content = FAKE_ANSWER
+        return result
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        with patch("utils.utils.CHROMA_PATH", tmp_dir), \
+             patch.dict(os.environ, {"OPENAI_API_KEY": "sk-dummy"}), \
+             patch("openai.embeddings.create", side_effect=fake_embed), \
+             patch("openai.chat.completions.create", side_effect=fake_chat), \
+             patch("utils.utils.upload_to_azure_blob", return_value="https://fake.blob/test.pdf"):
+
+            with open(pdf_path, "rb") as f:
+                ingest_resp = client.post(
+                    "/ingest",
+                    files={"files": ("test.pdf", f, "application/pdf")}
+                )
+            assert ingest_resp.status_code == 200
+
+            query_resp = client.post("/query", json={"query": "What is this document about?"})
+            assert query_resp.status_code == 200
+            assert query_resp.json()["answer"] == FAKE_ANSWER
 
 
 # --- Unit test: text splitter chunking ---
