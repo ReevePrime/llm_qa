@@ -1,6 +1,6 @@
 # AskTheDocs
 
-AskTheDocs is an AI-powered document Q&A tool built to practice containerisation and cloud deployment of LLM applications on Azure.
+AskTheDocs is an AI-powered document Q&A tool built as a portfolio project in order to practice containerisation and cloud deployment of LLM applications on Azure.
 
 Upload a PDF or text file, ask a question in natural language, and get an answer based on your document.
 The tool uses a Retrieval-Augmented Generation (RAG) pipeline.
