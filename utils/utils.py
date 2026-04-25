@@ -82,7 +82,7 @@ async def extract_and_store(files):
                 pages = [contents.decode("utf-8")]
 
             # --- Upload original file to Blob Storage ---
-            file_url = upload_to_azure_blob(file_path=file.file, file_name=file.filename)
+            file_url = upload_to_azure_blob(file_bytes=contents, file_name=file.filename)
 
             # --- Chunk, embed, and store each page ---
             for page_num, page_content in enumerate(pages):
@@ -179,15 +179,14 @@ AZURE_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
 AZURE_CONTAINER_NAME = os.environ.get("AZURE_STORAGE_CONTAINER_NAME")
 
 
-def upload_to_azure_blob(file_path: str, file_name: str):
+def upload_to_azure_blob(file_bytes: bytes, file_name: str):
     try:
         # --- Connect to storage ---
         blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
         blob_client = blob_service_client.get_blob_client(container=AZURE_CONTAINER_NAME, blob=file_name)
 
         # --- Upload and return the URL ---
-        with open(file_path, "rb") as data:
-            blob_client.upload_blob(data)
+        blob_client.upload_blob(file_bytes)
         return blob_client.url
 
     except Exception:
