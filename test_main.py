@@ -55,6 +55,7 @@ def test_ingest_and_query_real_pdf():
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         with patch("utils.utils.CHROMA_PATH", tmp_dir), \
+             patch.dict(os.environ, {"OPENAI_API_KEY": "sk-dummy"}), \
              patch("openai.embeddings.create", side_effect=fake_embed), \
              patch("openai.chat.completions.create", side_effect=fake_chat), \
              patch("utils.utils.upload_to_azure_blob", return_value="https://fake.blob/test.pdf"):
