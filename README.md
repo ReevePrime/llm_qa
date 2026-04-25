@@ -8,6 +8,8 @@ The tool uses a Retrieval-Augmented Generation (RAG) pipeline.
 🔗 **Live demo (WIP):** [askthedocs.greenpebble-51fc3c0a.westeurope.azurecontainerapps.io](https://askthedocs.greenpebble-51fc3c0a.westeurope.azurecontainerapps.io/static/index.html)
 (Please ask for the Admin key)
 
+![Progress](https://progress-bar.xyz/40/?title=Project%20Completion&width=500&color=1E3A5F)
+
 ---
 
 ## How it works
