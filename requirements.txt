@@ -1,5 +1,5 @@
 annotated-doc==0.0.4
-azure-storage-blob
+azure-storage-blob==12.25.1
 annotated-types==0.7.0
 anyio==4.13.0
 attrs==26.1.0
@@ -66,7 +66,7 @@ pyproject_hooks==1.2.0
 pytest==9.0.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
-python-json-logger
+python-json-logger==3.3.0
 python-magic; sys_platform != "win32"
 python-magic-bin==0.4.14; sys_platform == "win32"
 python-multipart==0.0.26

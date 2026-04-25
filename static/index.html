@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Document Q&A</title>
+</head>
+<body>
+  <h1>Document Q&A</h1>
+
+  <h2>Upload Documents</h2>
+  <input type="password" id="api-key" placeholder="API key" /><br><br>
+  <input type="file" id="file-input" multiple />
+  <button onclick="ingestFiles()">Upload</button>
+  <p id="ingest-status"></p>
+
+  <h2>Ask a Question</h2>
+  <input type="text" id="query-input" placeholder="Your question" size="60" />
+  <button onclick="submitQuery()">Ask</button>
+  <p id="query-status"></p>
+  <p><strong>Answer:</strong></p>
+  <p id="response-area"></p>
+
+  <script>
+    function apiKey() {
+      return document.getElementById('api-key').value.trim();
+    }
+
+    async function ingestFiles() {
+      const key = apiKey();
+      if (!key) { document.getElementById('ingest-status').textContent = 'Enter API key.'; return; }
+      const fileInput = document.getElementById('file-input');
+      if (!fileInput.files.length) { document.getElementById('ingest-status').textContent = 'Select a file.'; return; }
+
+      document.getElementById('ingest-status').textContent = 'Uploading...';
+      const formData = new FormData();
+      for (const file of fileInput.files) formData.append('files', file);
+
+      try {
+        const res = await fetch('/ingest', { method: 'POST', headers: { 'x-api-key': key }, body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
+        document.getElementById('ingest-status').textContent = data.message;
+      } catch (err) {
+        document.getElementById('ingest-status').textContent = 'Error: ' + err.message;
+      }
+    }
+
+    async function submitQuery() {
+      const key = apiKey();
+      if (!key) { document.getElementById('query-status').textContent = 'Enter API key.'; return; }
+      const query = document.getElementById('query-input').value.trim();
+      if (!query) { document.getElementById('query-status').textContent = 'Enter a question.'; return; }
+
+      document.getElementById('query-status').textContent = 'Thinking...';
+      document.getElementById('response-area').textContent = '';
+
+      try {
+        const res = await fetch('/query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+          body: JSON.stringify({ query }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`);
+        document.getElementById('query-status').textContent = '';
+        document.getElementById('response-area').textContent = data.answer;
+      } catch (err) {
+        document.getElementById('query-status').textContent = 'Error: ' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>

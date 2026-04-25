@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
 from utils import extract_and_store, query_llm
 from fastapi import FastAPI, UploadFile, File, Header, HTTPException, Depends
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 import os
 
@@ -8,6 +10,11 @@ import os
 load_dotenv()
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+
+@app.get("/", include_in_schema=False)
+async def root():
+    return RedirectResponse(url="/static/index.html")
 
 # Health check endpoint
 @app.get("/health")
