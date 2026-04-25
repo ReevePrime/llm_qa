@@ -5,6 +5,9 @@ AskTheDocs is an AI-powered document Q&A tool built to practice containerisation
 Upload a PDF or text file, ask a question in natural language, and get an answer based on your document.
 The tool uses a Retrieval-Augmented Generation (RAG) pipeline.
 
+🔗 **Live demo (WIP):** [askthedocs.greenpebble-51fc3c0a.westeurope.azurecontainerapps.io](https://askthedocs.greenpebble-51fc3c0a.westeurope.azurecontainerapps.io/static/index.html)
+(Please ask for the Admin key)
+
 ---
 
 ## How it works
