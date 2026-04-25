@@ -110,6 +110,8 @@ async def extract_and_store(files):
                 "status_code": 200,
             })
 
+        except HTTPException:
+            raise
         except Exception:
             logger.error("Failed to process file", exc_info=True, extra={
                 "endpoint": "/api/upload",
