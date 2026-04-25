@@ -13,10 +13,12 @@ import time
 from azure.storage.blob import BlobServiceClient
 
 logger = logging.getLogger(__name__)
-handler = logging.FileHandler("logs.json")                # Handlers control where the logs are written.
+# Handlers control where the logs are written.
+handler = logging.FileHandler("logs.json")
 handler.setFormatter(JsonFormatter(                       # setFormatter controls the way log entries look.
     fmt="%(asctime)s %(levelname)s %(message)s"))
-logger.addHandler(handler)                                # Links the handler to the logger. (Handlers can have multiple loggers)
+# Links the handler to the logger. (Handlers can have multiple loggers)
+logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -82,7 +84,8 @@ async def extract_and_store(files):
                 pages = [contents.decode("utf-8")]
 
             # --- Upload original file to Blob Storage ---
-            file_url = upload_to_azure_blob(file_bytes=contents, file_name=file.filename)
+            file_url = upload_to_azure_blob(
+                file_bytes=contents, file_name=file.filename)
 
             # --- Chunk, embed, and store each page ---
             for page_num, page_content in enumerate(pages):
@@ -98,7 +101,8 @@ async def extract_and_store(files):
                 collection.add(
                     embeddings=embeddings,        # The vector representations of the text chunks
                     documents=chunks_to_strings,  # The original text chunks
-                    ids=[f"{file.filename}_{page_num}_{i}" for i, _ in enumerate(chunks_to_strings)],
+                    ids=[f"{file.filename}_{page_num}_{i}" for i,
+                         _ in enumerate(chunks_to_strings)],
                     # Adds the file URL as metadata to each chunk
                     metadatas=[{"source": file_url} for _ in chunks_to_strings]
                 )
@@ -177,15 +181,13 @@ def validate_upload(file_bytes: bytes, allowed_mime_types: list[str]) -> bool:
     return any(fnmatch.fnmatch(detected, pattern) for pattern in allowed_mime_types)
 
 
-AZURE_CONNECTION_STRING = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
-AZURE_CONTAINER_NAME = os.environ.get("AZURE_STORAGE_CONTAINER_NAME")
-
-
 def upload_to_azure_blob(file_bytes: bytes, file_name: str):
     try:
         # --- Connect to storage ---
-        blob_service_client = BlobServiceClient.from_connection_string(AZURE_CONNECTION_STRING)
-        blob_client = blob_service_client.get_blob_client(container=AZURE_CONTAINER_NAME, blob=file_name)
+        blob_service_client = BlobServiceClient.from_connection_string(
+            os.environ.get("AZURE_STORAGE_CONNECTION_STRING"))
+        blob_client = blob_service_client.get_blob_client(
+            container=os.environ.get("AZURE_STORAGE_CONTAINER_NAME"), blob=file_name)
 
         # --- Upload and return the URL ---
         blob_client.upload_blob(file_bytes)
