@@ -16,18 +16,18 @@ async def health():
 
 # API key verification dependency
 async def verify_api_key(x_api_key: str = Header(...)):
-      expected = os.getenv("API_KEY")
-      if x_api_key != expected:                                                                                                                                                                                
-          raise HTTPException(status_code=403, detail="Invalid API key")
-      return True
+    expected = os.getenv("API_KEY")
+    if x_api_key != expected:
+        raise HTTPException(status_code=403, detail="Invalid API key")
+    return True
+
+class QueryRequest(BaseModel):
+    query: str
 
 @app.post("/ingest")
 async def ingest(files: list[UploadFile] = File(...), _=Depends(verify_api_key)):
     await extract_and_store(files)
     return {"message": f"Ingested {len(files)} file(s)"}
-
-class QueryRequest(BaseModel):
-    query: str
 
 @app.post("/query")
 async def query(request: QueryRequest, _=Depends(verify_api_key)):
