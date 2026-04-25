@@ -1,9 +1,10 @@
 from fastapi.testclient import TestClient
 from main import app, verify_api_key
 from utils.utils import validate_upload, initialize
+from unittest.mock import patch, AsyncMock
 import io
 
-# Override the API key dependency - app.dependency_overrides lets you swap any dependency for a different implementation during testing. 
+# Override the API key dependency - app.dependency_overrides lets you swap any dependency for a different implementation during testing.
 # Here we replace it with a lambda that always returns True
 app.dependency_overrides[verify_api_key] = lambda: True
 client = TestClient(app)
@@ -11,8 +12,9 @@ client = TestClient(app)
 
 # --- Unit test: no HTTP, no auth ---
 def test_validate_upload_accepts_pdf():
-    with open("test.pdf", "rb") as f:
-        assert validate_upload(f.read(), ["application/pdf"]) is True
+    # %PDF magic bytes for libmagic to detect application/pdf during testing
+    pdf_bytes = b"%PDF-1.4 minimal test content"
+    assert validate_upload(pdf_bytes, ["application/pdf"]) is True
 
 def test_validate_upload_rejects_exe():
     # PNG signature — unambiguously detected as image/png by libmagic
@@ -27,7 +29,8 @@ def test_health():
 
 def test_ingest_endpoint():
     fake_file = io.BytesIO(b"hello world")
-    resp = client.post("/ingest", files={"files": ("test.txt", fake_file, "text/plain")})
+    with patch("main.extract_and_store", new=AsyncMock(return_value=None)):
+        resp = client.post("/ingest", files={"files": ("test.txt", fake_file, "text/plain")})
     assert resp.status_code == 200
 
 
