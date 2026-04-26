@@ -1,18 +1,18 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import './FileUpload.css'
 
-// The address of the FastAPI backend
-const API_URL = 'http://localhost:8000'
-
-// Possible values for the `status` state
-// 'idle' | 'uploading' | 'success' | 'error'
-
-export default function FileUpload({ apiKey }) {
+export default function FileUpload({ uploadedDocs, status, error, onUpload, onReset }) {
   const [files, setFiles] = useState([])
-  const [status, setStatus] = useState('idle')
-  const [message, setMessage] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
   const fileInputRef = useRef(null)
+
+  // Clear pending selection once the upload succeeds
+  useEffect(() => {
+    if (status === 'success') {
+      setFiles([])
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }, [status])
 
   function openFilePicker() {
     fileInputRef.current.click()
@@ -46,44 +46,14 @@ export default function FileUpload({ apiKey }) {
     setFiles(files.filter((_, i) => i !== index))
   }
 
-  async function upload() {
-    setStatus('uploading')
-    setMessage('')
+  const loading = status === 'loading'
 
-    const formData = new FormData()
-    for (const file of files) formData.append('files', file)
-
-    const headers = apiKey ? { 'x-api-key': apiKey } : {}
-
-    try {
-      const res = await fetch(`${API_URL}/ingest`, { method: 'POST', headers, body: formData })
-      const text = await res.text()
-      const data = text ? JSON.parse(text) : {}
-      if (!res.ok) throw new Error(detailMessage(data.detail, res.status))
-      setStatus('success')
-      setMessage(data.message ?? 'Upload successful')
-      setFiles([])
-    } catch (err) {
-      setStatus('error')
-      setMessage(err.message)
-    }
-  }
-
-  function reset() {
-    setStatus('idle')
-    setMessage('')
-    setFiles([])
-    fileInputRef.current.value = ''
-  }
-
-  // Build the drop zone CSS class list
   const dropZoneClasses = ['drop-zone']
   if (isDragOver) dropZoneClasses.push('drag-over')
-  if (status === 'uploading') dropZoneClasses.push('disabled')
+  if (loading) dropZoneClasses.push('disabled')
 
-  // Compute the upload button label up here to keep JSX clean
   let buttonLabel = 'Upload'
-  if (status === 'uploading') {
+  if (loading) {
     buttonLabel = 'Uploading…'
   } else if (files.length > 0) {
     buttonLabel = `Upload ${files.length} file${files.length > 1 ? 's' : ''}`
@@ -91,13 +61,24 @@ export default function FileUpload({ apiKey }) {
 
   return (
     <div className="file-upload">
+      {uploadedDocs.length > 0 && (
+        <ul className="ingested-list" aria-label="Ingested documents">
+          {uploadedDocs.map((name, i) => (
+            <li key={i} className="ingested-item">
+              <DocIcon />
+              <span className="file-name">{name}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <div
         className={dropZoneClasses.join(' ')}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => status !== 'uploading' && openFilePicker()}
-        onKeyDown={e => e.key === 'Enter' && status !== 'uploading' && openFilePicker()}
+        onClick={() => !loading && openFilePicker()}
+        onKeyDown={e => e.key === 'Enter' && !loading && openFilePicker()}
         role="button"
         tabIndex={0}
         aria-label="Upload files — drag and drop or click to browse"
@@ -126,7 +107,7 @@ export default function FileUpload({ apiKey }) {
             <li key={i} className="file-item">
               <span className="file-name">{file.name}</span>
               <span className="file-size">{formatSize(file.size)}</span>
-              {status !== 'uploading' && (
+              {!loading && (
                 <button
                   className="remove-btn"
                   onClick={() => removeFile(i)}
@@ -140,7 +121,7 @@ export default function FileUpload({ apiKey }) {
         </ul>
       )}
 
-      {status === 'uploading' && (
+      {loading && (
         <div className="progress-track" role="progressbar" aria-label="Uploading">
           <div className="progress-bar" />
         </div>
@@ -149,24 +130,24 @@ export default function FileUpload({ apiKey }) {
       {status === 'success' && (
         <div className="status-banner success" role="status">
           <span className="status-icon">✓</span>
-          <span>{message}</span>
-          <button className="inline-btn" onClick={reset}>Upload more</button>
+          <span>Documents ingested successfully</span>
+          <button className="inline-btn" onClick={onReset}>Upload more</button>
         </div>
       )}
 
       {status === 'error' && (
         <div className="status-banner error" role="alert">
           <span className="status-icon">✕</span>
-          <span>{message}</span>
-          <button className="inline-btn" onClick={reset}>Try again</button>
+          <span>{error}</span>
+          <button className="inline-btn" onClick={onReset}>Try again</button>
         </div>
       )}
 
-      {(status === 'idle' || status === 'uploading') && (
+      {(status === 'idle' || loading) && (
         <button
           className="upload-btn"
-          onClick={upload}
-          disabled={files.length === 0 || status === 'uploading'}
+          onClick={() => onUpload(files)}
+          disabled={files.length === 0 || loading}
         >
           {buttonLabel}
         </button>
@@ -184,14 +165,16 @@ function UploadIcon() {
   )
 }
 
+function DocIcon() {
+  return (
+    <svg className="doc-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+  )
+}
+
 function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
-
-function detailMessage(detail, status) {
-  if (typeof detail === 'string') return detail
-  if (Array.isArray(detail)) return detail.map(e => e.msg ?? JSON.stringify(e)).join(', ')
-  return `HTTP ${status}`
 }

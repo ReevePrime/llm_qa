@@ -1,59 +1,32 @@
 import { useState, useRef, useEffect } from 'react'
 import './ChatInterface.css'
 
-const API_URL = 'http://localhost:8000'
-
-export default function ChatInterface({ apiKey }) {
-  const [messages, setMessages] = useState([])
+export default function ChatInterface({ messages, loading, onSend }) {
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
 
+  // Scroll to the latest message whenever the list changes
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  async function sendMessage() {
+  // Re-focus the input once a response finishes loading
+  useEffect(() => {
+    if (!loading) inputRef.current?.focus()
+  }, [loading])
+
+  function handleSend() {
     const query = input.trim()
     if (!query || loading) return
-
-    const id = Date.now()
-    setMessages(prev => [...prev, { id, question: query, answer: null, source: null, error: null }])
+    onSend(query)
     setInput('')
-    setLoading(true)
-
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(apiKey ? { 'x-api-key': apiKey } : {}),
-    }
-
-    try {
-      const res = await fetch(`${API_URL}/query`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ query }),
-      })
-      const text = await res.text()
-      const data = text ? JSON.parse(text) : {}
-      if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`)
-      setMessages(prev =>
-        prev.map(m => m.id === id ? { ...m, answer: data.answer, source: data.source ?? null } : m)
-      )
-    } catch (err) {
-      setMessages(prev =>
-        prev.map(m => m.id === id ? { ...m, error: err.message } : m)
-      )
-    } finally {
-      setLoading(false)
-      inputRef.current?.focus()
-    }
   }
 
   function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage()
+      handleSend()
     }
   }
 
@@ -105,7 +78,7 @@ export default function ChatInterface({ apiKey }) {
         />
         <button
           className="send-btn"
-          onClick={sendMessage}
+          onClick={handleSend}
           disabled={!input.trim() || loading}
         >
           Send
