@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from utils import extract_and_store, query_llm
 from fastapi import FastAPI, UploadFile, File, Header, HTTPException, Depends
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
 
@@ -10,11 +10,13 @@ import os
 load_dotenv()
 
 app = FastAPI()
-app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
-@app.get("/", include_in_schema=False)
-async def root():
-    return RedirectResponse(url="/static/index.html")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origin_regex=r"http://localhost:\d+",
+    allow_methods=["POST"],
+    allow_headers=["x-api-key", "Content-Type"],
+)
 
 # Health check endpoint
 @app.get("/health")
@@ -40,3 +42,6 @@ async def ingest(files: list[UploadFile] = File(...), _=Depends(verify_api_key))
 async def query(request: QueryRequest, _=Depends(verify_api_key)):
     answer = query_llm(request.query)
     return {"answer": answer}
+
+if os.path.isdir("askthedocs/dist"):
+    app.mount("/", StaticFiles(directory="askthedocs/dist", html=True), name="static")

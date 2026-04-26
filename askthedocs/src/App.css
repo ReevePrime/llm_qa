@@ -1,0 +1,129 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+}
+
+.app-header {
+  flex-shrink: 0;
+  padding: 28px 32px 20px;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.app-header h1 {
+  margin: 0 0 6px;
+}
+
+.app-subtitle {
+  color: var(--text);
+  margin: 0;
+  font-size: 16px;
+}
+
+.app-main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "chat apikey"
+    "chat upload";
+  gap: 20px;
+  padding: 24px 32px;
+  max-width: 1040px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "apikey"
+      "chat"
+      "upload";
+    height: auto;
+    overflow: visible;
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.card-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+/* Grid placement */
+.api-key-card {
+  grid-area: apikey;
+  align-self: start;
+}
+
+.chat-card {
+  grid-area: chat;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Make the chat interface fill the card vertically */
+.chat-card > .chat-interface {
+  flex: 1;
+  min-height: 0;
+}
+
+.upload-card {
+  grid-area: upload;
+  align-self: start;
+}
+
+/* Compact drop zone for the sidebar */
+.upload-card .drop-zone {
+  padding: 24px 16px;
+}
+
+.upload-card .upload-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.field-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+.text-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--code-bg);
+  color: var(--text-h);
+  font-size: 15px;
+  font-family: var(--sans);
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+  outline: none;
+
+  &:focus {
+    border-color: var(--accent);
+  }
+
+  &::placeholder {
+    color: var(--text);
+    opacity: 0.7;
+  }
+}
