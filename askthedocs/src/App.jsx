@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import FileUpload from './components/FileUpload'
+import ChatInterface from './components/ChatInterface'
 import './App.css'
 
 export default function App() {
@@ -13,7 +14,7 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        <div className="card">
+        <div className="card api-key-card">
           <label className="field-label" htmlFor="api-key">API Key</label>
           <input
             id="api-key"
@@ -26,7 +27,12 @@ export default function App() {
           />
         </div>
 
-        <div className="card">
+        <div className="card chat-card">
+          <h2 className="card-title">Ask a Question</h2>
+          <ChatInterface apiKey={apiKey} />
+        </div>
+
+        <div className="card upload-card">
           <h2 className="card-title">Upload Documents</h2>
           <FileUpload apiKey={apiKey} />
         </div>

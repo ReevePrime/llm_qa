@@ -1,11 +1,12 @@
 .app {
   display: flex;
   flex-direction: column;
-  min-height: 100svh;
+  height: 100svh;
 }
 
 .app-header {
-  padding: 40px 32px 24px;
+  flex-shrink: 0;
+  padding: 28px 32px 20px;
   border-bottom: 1px solid var(--border);
   text-align: center;
 }
@@ -22,17 +23,29 @@
 
 .app-main {
   flex: 1;
-  display: flex;
-  flex-direction: column;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "chat apikey"
+    "chat upload";
   gap: 20px;
-  padding: 32px;
-  max-width: 640px;
+  padding: 24px 32px;
+  max-width: 1040px;
   width: 100%;
   margin: 0 auto;
   box-sizing: border-box;
 
-  @media (max-width: 1024px) {
-    padding: 20px;
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "apikey"
+      "chat"
+      "upload";
+    height: auto;
+    overflow: visible;
   }
 }
 
@@ -49,6 +62,41 @@
 .card-title {
   margin: 0;
   font-size: 18px;
+  font-weight: 500;
+  color: var(--text-h);
+}
+
+/* Grid placement */
+.api-key-card {
+  grid-area: apikey;
+  align-self: start;
+}
+
+.chat-card {
+  grid-area: chat;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Make the chat interface fill the card vertically */
+.chat-card > .chat-interface {
+  flex: 1;
+  min-height: 0;
+}
+
+.upload-card {
+  grid-area: upload;
+  align-self: start;
+}
+
+/* Compact drop zone for the sidebar */
+.upload-card .drop-zone {
+  padding: 24px 16px;
+}
+
+.upload-card .upload-icon {
+  width: 28px;
+  height: 28px;
 }
 
 .field-label {

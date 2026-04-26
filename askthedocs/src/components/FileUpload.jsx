@@ -59,7 +59,7 @@ export default function FileUpload({ apiKey }) {
       const res = await fetch(`${API_URL}/ingest`, { method: 'POST', headers, body: formData })
       const text = await res.text()
       const data = text ? JSON.parse(text) : {}
-      if (!res.ok) throw new Error(data.detail ?? `HTTP ${res.status}`)
+      if (!res.ok) throw new Error(detailMessage(data.detail, res.status))
       setStatus('success')
       setMessage(data.message ?? 'Upload successful')
       setFiles([])
@@ -188,4 +188,10 @@ function formatSize(bytes) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+function detailMessage(detail, status) {
+  if (typeof detail === 'string') return detail
+  if (Array.isArray(detail)) return detail.map(e => e.msg ?? JSON.stringify(e)).join(', ')
+  return `HTTP ${status}`
 }
