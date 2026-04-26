@@ -3,7 +3,7 @@ import FileUpload from './components/FileUpload'
 import ChatInterface from './components/ChatInterface'
 import './App.css'
 
-const API_URL = 'http://localhost:8000'
+const API_URL = import.meta.env.DEV ? 'http://localhost:8000' : ''
 
 export default function App() {
   const [apiKey, setApiKey] = useState('')
