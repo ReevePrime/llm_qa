@@ -43,4 +43,5 @@ async def query(request: QueryRequest, _=Depends(verify_api_key)):
     answer = query_llm(request.query)
     return {"answer": answer}
 
-app.mount("/", StaticFiles(directory="askthedocs/dist", html=True), name="static")
+if os.path.isdir("askthedocs/dist"):
+    app.mount("/", StaticFiles(directory="askthedocs/dist", html=True), name="static")
