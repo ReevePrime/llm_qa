@@ -96,3 +96,5 @@ websockets==16.0
 xxhash==3.6.0
 zipp==3.23.1
 zstandard==0.25.0
+rank_bm25==0.2.2
+sentence_transformers==5.4.1
