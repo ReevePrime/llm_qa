@@ -1,13 +1,16 @@
+import os
 import chromadb
 import openai
 from dotenv import load_dotenv
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from pypdf import PdfReader
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
 
 
 load_dotenv()
 
-CHROMA_PATH = "../chroma_data"
+CHROMA_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "chroma_data")
 COLLECTION_NAME = "openai_embeddings"
 EMBEDDING_MODEL = "text-embedding-3-small"
 reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
@@ -45,6 +48,24 @@ def check_results(test_queries, collection):
     print(f"\nHit rate: {hits}/{total} = {hits / total:.0%}")
 
 
+
+
+def ingest_pdf(pdf_path, collection):
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=512, chunk_overlap=64)
+    reader = PdfReader(pdf_path)
+    for page_num, page in enumerate(reader.pages):
+        page_text = page.extract_text() or ""
+        chunks = text_splitter.create_documents([page_text])
+        chunk_texts = [c.page_content for c in chunks]
+        if not chunk_texts:
+            continue
+        response = openai.embeddings.create(input=chunk_texts, model=EMBEDDING_MODEL)
+        embeddings = [item.embedding for item in response.data]
+        collection.add(
+            embeddings=embeddings,
+            documents=chunk_texts,
+            ids=[f"handbook_p{page_num}_{i}" for i in range(len(chunk_texts))],
+        )
 
 
 def build_bm25_index(texts):
@@ -176,6 +197,11 @@ def run_eval(label, retrieve_fn):
 if __name__ == "__main__":
     collection = initialize()
     result = collection.get()
+    if not result["documents"]:
+        print("Collection is empty — ingesting employee_handbook.pdf...")
+        pdf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "employee_handbook.pdf")
+        ingest_pdf(pdf_path, collection)
+        result = collection.get()
     all_chunk_texts = result["documents"]
     chunk_ids = result["ids"]
     bm25_index = build_bm25_index(all_chunk_texts)
