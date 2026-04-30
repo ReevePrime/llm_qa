@@ -21,11 +21,25 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install -r requirements.txt
-      - run: pytest       
+      - run: pytest
 
-  build:
+  evaluate:
     runs-on: ubuntu-latest
     needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Run eval and print score report
+        run: python eval/eval.py
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}           
+          
+  build:
+    runs-on: ubuntu-latest
+    needs: evaluate
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
